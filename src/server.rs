@@ -268,7 +268,9 @@ pub async fn handle_request(
                     latency_ms = latency.as_millis(),
                     "upstream returned error status"
                 );
-                state.tracker.record_error(stats_index);
+                if !is_caller_error(status) {
+                    state.tracker.record_error(stats_index);
+                }
             }
 
             let status_str = status.as_u16().to_string();
@@ -311,6 +313,13 @@ pub async fn handle_request(
             ))
         }
     }
+}
+
+fn is_caller_error(status: hyper::StatusCode) -> bool {
+    matches!(
+        status,
+        hyper::StatusCode::BAD_REQUEST | hyper::StatusCode::UNPROCESSABLE_ENTITY
+    )
 }
 
 fn json_response(status: hyper::StatusCode, body: Bytes) -> Response<BoxBody> {
@@ -431,6 +440,34 @@ mod tests {
     use crate::router::RoundRobinState;
     use crate::tracker::Tracker;
     use tokio::sync::oneshot;
+
+    #[test]
+    fn caller_errors_do_not_degrade_provider() {
+        use hyper::StatusCode;
+        for status in [StatusCode::BAD_REQUEST, StatusCode::UNPROCESSABLE_ENTITY] {
+            assert!(is_caller_error(status), "{status} should be a caller error");
+        }
+    }
+
+    #[test]
+    fn provider_errors_degrade_provider() {
+        use hyper::StatusCode;
+        for status in [
+            StatusCode::UNAUTHORIZED,
+            StatusCode::FORBIDDEN,
+            StatusCode::NOT_FOUND,
+            StatusCode::REQUEST_TIMEOUT,
+            StatusCode::TOO_MANY_REQUESTS,
+            StatusCode::INTERNAL_SERVER_ERROR,
+            StatusCode::BAD_GATEWAY,
+            StatusCode::SERVICE_UNAVAILABLE,
+        ] {
+            assert!(
+                !is_caller_error(status),
+                "{status} should degrade the candidate"
+            );
+        }
+    }
 
     fn test_state_with_upstream(upstream_port: u16) -> Arc<AppState> {
         crate::init_crypto();
