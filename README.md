@@ -89,6 +89,9 @@ listen = "127.0.0.1:4000"
 # Bind it to a routable address so Prometheus can scrape it.
 # metrics_listen = "0.0.0.0:4040"
 
+# `listen` can be overridden at startup with `--listen <host:port>` or
+# STURNUS_LISTEN, for deployments that ship the config as a static file.
+
 # Providers: where to send requests
 [provider.openai]
 base_url = "https://api.openai.com/v1"
@@ -208,6 +211,8 @@ The best provider is exploited heavily while worse ones keep enough traffic to s
 
 - **Kubernetes native sidecar** (recommended): the app container shares the pod's network namespace and reaches sturnus on `127.0.0.1:4000`, so keep `listen = "127.0.0.1:4000"` — bound to loopback, the credential-bearing proxy is unreachable from other pods entirely. To scrape metrics, set `metrics_listen = "0.0.0.0:4040"`: it serves only `/metrics`, `/health`, `/healthz` and `/status` (never the proxy) on the routable pod IP, and stays up until the proxy has finished draining so the final scrape window isn't lost. Containers in a pod share ports, so pick a metrics port the app doesn't use.
 - **Standalone Docker** with the client in a *separate* container: it reaches sturnus over the container's IP, which a `127.0.0.1` bind refuses, so `listen` must be `0.0.0.0:4000`.
+
+Where the config is mounted read-only and shared across deployments — a Helm chart's ConfigMap, say — pass `--listen <host:port>` or set `STURNUS_LISTEN` to move the bind address without templating the file. The flag takes precedence over the env var, which takes precedence over `listen` in the config; the override is validated like the config value, so it still can't collide with `metrics_listen`. Note that the `healthcheck` subcommand probes port 4000 by default, so pass a matching `--port` if you override to a different port.
 
 On Kubernetes, run sturnus as a [native sidecar](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/) — an init container with `restartPolicy: Always` (stable since v1.29). It then starts before the app container and is terminated after it, so the proxy is ready for the app's first request and stays up while the app drains.
 

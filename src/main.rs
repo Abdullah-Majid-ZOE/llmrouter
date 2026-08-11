@@ -39,6 +39,10 @@ struct Cli {
     #[arg(long = "env-dir")]
     env_dir: Option<PathBuf>,
 
+    /// Override the config's listen address (host:port)
+    #[arg(long, env = "STURNUS_LISTEN")]
+    listen: Option<String>,
+
     /// Log output format
     #[arg(long, value_enum, default_value = "auto", env = "STURNUS_LOG_FORMAT")]
     log_format: LogFormat,
@@ -130,7 +134,14 @@ async fn main() -> anyhow::Result<()> {
         info!(path = %env_dir.display(), "loaded env dir");
     }
 
-    let config = sturnus::config::Config::load(&cli.config)?;
+    let mut config = sturnus::config::Config::load(&cli.config)?;
+
+    // A deployment that can't template the config file (a static ConfigMap, say)
+    // can still move the bind address. Validated below by listen_addrs().
+    if let Some(ref listen) = cli.listen {
+        info!(from = %config.listen, to = %listen, "listen address overridden");
+        config.listen = listen.clone();
+    }
 
     info!(listen = %config.listen, "starting sturnus");
     info!(

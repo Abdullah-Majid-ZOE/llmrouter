@@ -1,4 +1,6 @@
 listen = "127.0.0.1:4000"
+# Override at startup with `--listen <host:port>` or STURNUS_LISTEN when the
+# config file itself can't be templated (a Kubernetes ConfigMap, for example).
 
 # Optional second listener serving only /metrics, /health, /healthz, /status.
 # Bind to a routable address so Prometheus can scrape while the proxy stays on loopback.

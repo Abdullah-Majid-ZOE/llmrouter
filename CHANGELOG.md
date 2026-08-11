@@ -9,6 +9,17 @@ rename it.
 Releases up to and including 4.3.0 were published under the `llmrouter` name;
 their history lives in the git log and tags.
 
+## [Unreleased]
+
+### Added
+
+- **`--listen` override** (`--listen <host:port>`, or the `STURNUS_LISTEN` env
+  var) overrides the config's `listen` address at startup, so a deployment that
+  mounts the config read-only — a Helm chart's ConfigMap, say — can move the
+  bind address without templating the file. Precedence is flag → env var →
+  config → default; the override is validated like the config value, so it
+  still can't collide with `metrics_listen`.
+
 ## [5.2.0] - 2026-07-14
 
 ### Added
