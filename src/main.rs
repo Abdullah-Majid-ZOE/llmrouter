@@ -136,8 +136,6 @@ async fn main() -> anyhow::Result<()> {
 
     let mut config = sturnus::config::Config::load(&cli.config)?;
 
-    // A deployment that can't template the config file (a static ConfigMap, say)
-    // can still move the bind address. Validated below by listen_addrs().
     if let Some(ref listen) = cli.listen {
         info!(from = %config.listen, to = %listen, "listen address overridden");
         config.listen = listen.clone();
